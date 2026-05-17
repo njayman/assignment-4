@@ -1,0 +1,515 @@
+REPORT WRITING GUIDE — CIS143-6 Brain Tumour MRI Classification
+================================================================
+This is NOT a report. It is a guide to help YOU write the report yourself.
+Do NOT copy text from here. Use it to know what to look at and what to say.
+Write in your own words. Aim for ~5000 words total.
+
+Structure matches template.docx. Use Harvard / Cite Them Right referencing.
+Add figures using screenshots from the notebook outputs.
+
+
+==============================================================
+1. INTRODUCTION  (~600 words)
+==============================================================
+
+-- 1a. BACKGROUND  (~200 words) --
+
+What to cover:
+  - Open with 1 sentence: what is AI in medical imaging and why it matters
+  - Brain tumours: why is early detection critical? What are the consequences
+    of missed diagnosis? Think about NHS workload, patient outcomes, survival rates
+  - How has deep learning changed this field? Mention the 2012 AlexNet moment
+    as the turning point for CNNs in image recognition
+  - State that CNNs can extract visual features from MRI scans automatically
+    without human-crafted feature engineering
+  - Cite LeCun, Bengio and Hinton (2015) when you mention deep learning
+  - Cite Sultan et al. (2019) when you mention deep learning for brain MRI specifically
+
+Things to look up and put in your own words:
+  - What is a glioma? A meningioma? A pituitary tumour?
+    (brief 1-sentence description for each in clinical terms)
+
+-- 1b. OBJECTIVE  (~100 words) --
+
+Write 3-4 bullet points. What did YOU set out to do?
+  - Download and organise the Kaggle dataset
+  - Train and evaluate multiple deep learning models
+  - Compare baseline vs improved approaches
+  - Identify and address common ML challenges (overfitting, imbalance, leakage)
+  Do NOT copy the template wording — put these in your own sentence structure.
+
+-- 1c. DATASET OVERVIEW  (~300 words) --
+
+Open part1_baseline.ipynb. Look at these cells and write what you see:
+
+  From "class-counts" cell output:
+  - Fill in: Glioma = ? images, Meningioma = ?, No Tumour = ?, Pituitary = ?
+  - Total = ? images (Training folder)
+
+  From "class-distribution-plot":
+  - Is the distribution balanced or imbalanced?
+  - Which class has the most images? Which has the fewest?
+  - Write 2-3 sentences describing this — do not just state numbers
+
+  From "sample-images":
+  - Describe what MRI images look like (greyscale scans, bright regions, etc.)
+  - Note: images are displayed in RGB but MRI is originally greyscale
+  - What do the different tumour types look like visually?
+    (glioma: irregular infiltrating mass; meningioma: often near brain edge;
+    pituitary: central/small; no tumour: no bright mass)
+  - Write these observations yourself after looking at the images
+
+  Include a figure: copy the class distribution bar chart (Figure 1)
+  Include a figure: copy the sample images grid (Figure 2)
+
+  Also mention:
+  - Image resolution: 224×224 pixels (after resizing)
+  - Colour mode: RGB (3 channels)
+  - Folder structure: Training/ with 4 subfolders, one per class
+
+
+==============================================================
+2. METHODS  (~1500 words)
+==============================================================
+
+-- 2a. DATA PREPARATION  (~400 words) --
+
+Look at part1_baseline.ipynb, Sections 2 and 3. Answer these questions:
+
+  Q: How did you access the dataset?
+  → Use kagglehub. Write 1-2 sentences explaining what kagglehub does
+    (API-based download, saved to Google Drive for persistence)
+
+  Q: How did you split the data?
+  → 70% train, 15% validation, 15% test. Explain why STRATIFIED:
+    it ensures each class is represented proportionally in every split.
+    Write why a random split would be risky with imbalanced classes.
+
+  Q: What is data leakage and how did you avoid it?
+  → Write your own definition: data leakage = when information from val/test
+    influences training, making evaluation unreliable.
+  → How you avoided it:
+    (1) augmentation applied ONLY to training generator
+    (2) val/test generators use rescale only, no augmentation
+    (3) class weights computed from training labels only
+    Write 3-4 sentences on this.
+
+  Q: What augmentation did you use?
+  → rotation_range=15, zoom_range=0.10, horizontal_flip, width/height shift
+  → Explain WHY each one helps (rotation: MRI scans can have different angles;
+    flip: tumours can appear on either side; zoom: simulates different scan distances)
+
+  Q: What preprocessing was applied to images?
+  → Rescaling pixel values to [0,1] by dividing by 255
+  → Resizing to 224×224 (standard for pretrained networks)
+
+-- 2b. DATA SEGMENTATION  (~200 words) --
+
+Look at part2a_data_segmentation.ipynb. Look at the visualisation grid (Section 3).
+
+  Q: What is Otsu thresholding?
+  → Write in your own words: it automatically finds an optimal threshold
+    to separate bright (brain) from dark (background) pixels.
+    No manual threshold needed — it minimises within-class intensity variance.
+    Reference: Otsu (1979)
+
+  Q: What morphological operations were applied?
+  → Morphological closing: fills small holes in the mask
+  → Largest contour extraction: keeps only the main brain region
+
+  Q: Why might this help the CNN?
+  → Write 2-3 sentences: skull edges and scan background can activate CNN filters
+    unnecessarily. Masking these out forces the model to attend to tumour-bearing tissue.
+
+  Include a figure: the Otsu visualisation grid (Figure 3)
+  Caption: "Figure 3: Otsu brain extraction. Left: original MRI. Centre: binary mask.
+             Right: segmented brain region. Shown for each tumour class."
+
+-- 2c. MODELS IMPLEMENTED  (~600 words) --
+
+Write a short paragraph (3-5 sentences) for each model.
+Look at the model.summary() output in each notebook for parameter counts.
+
+  MODEL 1 — ANN (part2b_ann_vs_cnn.ipynb, Section 1):
+  - Architecture: Flatten → Dense(512) → Dropout(0.4) → Dense(256) → Dropout(0.3) → Dense(128) → Dense(4)
+  - Trainable parameters: look at model.summary() output and fill in
+  - Why it is a weak baseline: each pixel treated independently, no spatial awareness
+  - Write in your own words why this matters for images
+  - Cite LeCun, Bengio and Hinton (2015): CNNs exploit spatial locality and
+    translation equivariance — properties ANNs ignore
+
+  MODEL 2 — Baseline CNN (part1_baseline.ipynb, Section 4):
+  - Architecture: 3× (Conv2D → MaxPool), Flatten, Dense(256), Softmax
+  - Filters: 32 → 64 → 128. Optimiser: Adamax. LR: 0.001. Epochs: 20
+  - No regularisation — mention that this is intentional for comparison
+
+  MODEL 3 — Improved CNN Experiment A (part2b, Section 3):
+  - Architecture: 4× (Conv2D → BatchNorm → ReLU → MaxPool), GAP, Dense(256), Dropout(0.4)
+  - Write what BatchNorm does in your own words (normalises layer inputs,
+    speeds up training, allows higher LR)
+  - Write what Dropout does — cite Srivastava et al. (2014):
+    randomly zeroes neurons during training, forces distributed representations
+  - Mention class weights: note that the dataset is perfectly balanced (1400 images
+    per class), so class weights all equal 1.0 — they had no effect here. Write that
+    you computed them to investigate whether imbalance existed, and the result
+    confirmed the dataset is balanced. This shows due diligence.
+  - LR: 0.0005, Epochs: 30, callbacks: EarlyStopping + ReduceLROnPlateau
+
+  MODEL 4 — Improved CNN Experiment B (part2b, Section 4):
+  - Same architecture but: LR=0.001, Dropout=0.3, trained on Otsu-segmented images
+  - Write what changed and why it constitutes a genuine experiment
+    (different preprocessing + different regularisation strength)
+  - Did the table (Section 5) show improvement over Exp A? Write what you see.
+
+  MODEL 5 — EfficientNetB0 Exp A (part2c, Section 2):
+  - Architecture: frozen EfficientNetB0 base + GAP + Dense(256) + Dropout(0.3) + Softmax
+  - Pretrained on ImageNet (1.4M images, 1000 classes)
+  - Explain transfer learning in 2-3 sentences: feature representations learned
+    on natural images (edges, textures, shapes) generalise to medical images
+  - Cite Tan and Le (2019) for EfficientNet architecture
+  - Frozen base = base weights not updated; only classifier head trained
+  - How many trainable params? (look at model.summary output)
+
+  MODEL 6 — EfficientNetB0 Exp B (part2c, Section 3):
+  - Top 30 layers unfrozen, LR=1e-5 (100× lower than Exp A)
+  - Explain why lower LR is critical: prevents catastrophic forgetting
+    of pretrained ImageNet features
+  - Expected improvement: upper layers adapt to MRI textures while lower
+    layers retain general edge/shape detectors
+
+  INTERPRETABILITY — GRAD-CAM (part2d, Section 7):
+  - Grad-CAM (Gradient-weighted Class Activation Mapping) was applied to
+    visualise which regions of each MRI image influenced the model's decision
+  - Cite Selvaraju et al. (2017): gradients of the predicted class score are
+    pooled across the last convolutional layer to produce a spatial heatmap
+  - Write 2-3 sentences explaining the method in your own words:
+    the heatmap highlights pixels the model "attended to" — warm colours (red/yellow)
+    indicate high importance, cool colours (blue) indicate low importance
+  - This was applied to EfficientNetB0 Exp A (the best model) and Baseline CNN
+    to compare where each model looks for the same input image
+
+-- 2d. EXPERIMENTAL SETUP  (~300 words) --
+
+  Write about:
+  - Environment: Google Colab with T4 GPU (why GPU? computational speed —
+    CPU training would take hours)
+  - Libraries: TensorFlow/Keras (model building), scikit-learn (metrics, splits,
+    class weights), OpenCV (Otsu), pandas/numpy (data handling), matplotlib (visualisation)
+  - Callbacks: write what each one does in your own words
+      EarlyStopping: stops training when val_loss stops improving (patience=7 epochs)
+      ReduceLROnPlateau: halves LR when val_loss plateaus (patience=3 epochs)
+      ModelCheckpoint: saves the best model weights based on val_loss
+  - Training epochs: Baseline=20, ANN=25, CNN A=30, CNN B=30, EfficientNetB0=25 each phase
+  - Include the hyperparameter table from part2c (Section 4) as Table 1
+
+
+==============================================================
+3. RESULTS AND ANALYSIS  (~1800 words)
+==============================================================
+
+-- 3a. MODEL PERFORMANCE TABLE  (~200 words) --
+
+Copy the comparison table from part2d_final_evaluation.ipynb (Section 1) as Table 2.
+
+Write 2-3 sentences describing the results:
+  - Which model had the highest accuracy and F1?
+  - What was the ranking order from worst to best?
+  - How much did performance improve from baseline to best model?
+    (Calculate the percentage point difference yourself)
+  - Which metric changed most dramatically across models?
+
+-- 3b. CONFUSION MATRICES  (~400 words) --
+
+Include Figure 12: side-by-side confusion matrices from part2d (Section 3).
+
+For each model, write 2-3 sentences. Look at where the errors are:
+  - Diagonal = correct predictions. Off-diagonal = errors.
+  - Which class has the most off-diagonal errors? (likely meningioma)
+  - Which two classes are most often confused? (likely meningioma ↔ glioma)
+
+Then write a longer analysis paragraph:
+  Q: Why is meningioma the hardest class?
+  → NOT because of sample size — all classes have 1400 images (perfectly balanced)
+  → Visual overlap: meningioma often appears near the brain edge and can look similar
+    to glioma's irregular bright regions
+  → Write 3-4 sentences: the challenge is purely visual — look at the sample images
+    and describe how meningioma differs (or doesn't) from glioma visually
+
+  Q: How did the confusion pattern change with improved models?
+  → Look at baseline vs EfficientNetB0 confusion matrices side by side
+  → Did meningioma precision/recall improve? (look at classification reports)
+  → Write what you observe
+
+  Include Figure 10: the normalised confusion matrix for the best model.
+
+-- 3c. PRECISION-RECALL CURVES  (~300 words) --
+
+Include Figure 11: precision-recall curves from part2d (Section 2).
+
+Q: Why use P-R curves alongside accuracy?
+→ Write in your own words: accuracy is misleading with class imbalance.
+  A model that ignores meningioma can still get ~75% accuracy.
+  P-R curves reveal per-class performance — low AP for a class means the model
+  struggles with that class even if overall accuracy is high.
+
+Q: Which class has the lowest AP across all models?
+→ Look at the plots — it is likely meningioma. Write why.
+
+Q: What trend do you see in micro-average AP across models?
+→ ANN < Baseline CNN < Improved CNN < EfficientNetB0?
+→ Write the actual values you see in the plots.
+
+Q: What does high precision but low recall for meningioma mean?
+→ When the model DOES predict meningioma it is often right (high precision)
+  but it misses many actual meningioma cases (low recall) — false negatives.
+→ In clinical context: missed tumours (false negatives) are more dangerous
+  than false alarms (false positives).
+
+-- 3d. TRAINING CURVES ANALYSIS  (~400 words) --
+
+Reference: Figure 4 (baseline), Figure 8 (CNN A vs B), Figure 9 (EfficientNetB0 A vs B).
+
+For baseline CNN (part1, Section 4):
+  - At what epoch does the train/val accuracy gap start to widen?
+  - By the final epoch, how large is the gap? (Fill in from your curves)
+  - Does val_loss start increasing while train_loss keeps falling?
+    This is the classic overfitting signature — write about it.
+
+For Improved CNN (part2b, Section 3 and 4):
+  - Is the train/val gap smaller than baseline? Write what you observe.
+  - Did EarlyStopping trigger? (If yes: at what epoch did training stop?)
+  - Did ReduceLROnPlateau trigger? What effect did it have on the loss curve?
+
+For EfficientNetB0 (part2c, Section 3):
+  - Does it converge faster than CNN? (fewer epochs to reach same accuracy?)
+    Write why: pretrained features mean the network starts from a strong initialisation
+  - Compare Exp A (frozen) vs Exp B (fine-tuned) curves
+    Does fine-tuning show a further improvement after the initial convergence?
+
+-- 3e. CHALLENGES ENCOUNTERED  (~500 words) --
+
+Write about each challenge in your own words. Be specific — reference YOUR results.
+
+  CHALLENGE 1 — OVERFITTING
+  Evidence: Look at baseline training curves. Describe the widening accuracy gap.
+    Write the approximate gap at epoch 20 (e.g. "train accuracy reached X% while
+    val accuracy was only Y%").
+  What it means: the model memorised training data including noise, not generalisable patterns
+  How you addressed it:
+    (1) Dropout(0.4) — cite Srivastava et al. (2014)
+    (2) BatchNormalization
+    (3) EarlyStopping
+    (4) Data augmentation (creates artificial variety)
+  Was it resolved? Look at improved CNN curves — is there still a gap? Write honestly.
+
+  CHALLENGE 2 — CLASS IMBALANCE (investigated, not present)
+  Evidence: Look at class counts from part1 — all 4 classes have exactly 1400 images.
+    The dataset is perfectly balanced. Class weights all computed to 1.0 (no effect).
+  Write honestly: you anticipated imbalance, computed class weights as a precaution,
+    and found the dataset was balanced. This is good methodology — checking rather
+    than assuming.
+  Then explain why meningioma still had the lowest per-class F1 despite equal samples:
+    it is a harder visual category (location and appearance overlap with glioma),
+    not a data volume problem. Write 3-4 sentences on this distinction.
+
+  CHALLENGE 3 — DATA LEAKAGE
+  Definition: write your own definition (contamination of evaluation by training info)
+  How it could happen (give specific examples from this project):
+    (1) Augmenting validation images: model sees augmented versions at eval time
+        but was trained to classify augmented images — inflates val accuracy
+    (2) Computing class weights from all data: val/test labels influence training setup
+    (3) Normalisation stats from all data: mean/std from val/test leaks into training
+  What you did to prevent it:
+    (1) Augmentation only on train_datagen
+    (2) Class weights computed from train_df only
+    (3) Separate generators for train vs val/test
+  Write 3-4 sentences confirming these precautions were taken.
+
+-- 3f. GRAD-CAM INTERPRETABILITY ANALYSIS  (~300 words) --
+
+Look at part2d_final_evaluation.ipynb, Section 7. You have two outputs:
+  (A) A 4×3 grid — one row per tumour class, showing: original MRI | heatmap | overlay
+  (B) A side-by-side comparison — Baseline CNN vs EfficientNetB0 on the same meningioma scan
+
+Write about these in your own words:
+
+  Q: What does GradCAM show?
+  → Write 2-3 sentences in your own words:
+    The heatmap shows which spatial regions of the MRI had the greatest influence
+    on the model's prediction. Red/yellow areas = high activation (model "looked here").
+    Blue areas = low influence. This provides a visual explanation of model behaviour.
+
+  Q: Looking at the 4-class grid (EfficientNetB0 Exp A):
+  → For each class, describe WHERE the model attended:
+    - Glioma: does the heatmap centre on the tumour mass (bright irregular region)?
+    - Meningioma: does it focus near the brain edge where meningiomas typically sit?
+    - Pituitary: does it highlight the central/lower brain region?
+    - No Tumour: is attention more diffuse (spread across brain) or focused on a region?
+  → Write what you ACTUALLY see in your figures — do not describe what "should" happen.
+    If the heatmap looks unexpected, that is a finding worth discussing.
+
+  Q: Comparing Baseline CNN vs EfficientNetB0 on the meningioma case:
+  → Does the baseline CNN's heatmap look scattered/unfocused?
+  → Does EfficientNetB0's heatmap look more tightly focused on the tumour region?
+  → Write 2-3 sentences on what this tells you about feature quality:
+    EfficientNetB0's ImageNet-pretrained features detect clinically relevant regions;
+    the baseline CNN may activate on background noise (skull edge, artefacts).
+  → Cite Selvaraju et al. (2017) when describing the GradCAM method.
+
+  Q: What are the limitations of GradCAM?
+  → It shows WHERE not WHY — the heatmap is a post-hoc explanation, not the actual
+    decision rule. Different seeds or model weights may produce different heatmaps.
+  → Write 1-2 sentences on this.
+
+  Include Figure 15: GradCAM per-class grid (4 classes × 3 cols, EfficientNetB0 Exp A)
+  Include Figure 16: Baseline CNN vs EfficientNetB0 GradCAM comparison (meningioma case)
+
+  Caption for Fig 15: "Figure 15: Grad-CAM visualisations for EfficientNetB0 Exp A across
+    all four tumour classes. Left: original MRI. Centre: Grad-CAM heatmap (warm colours
+    indicate high activation). Right: overlay. Layer: [fill in conv_name from output]."
+  Caption for Fig 16: "Figure 16: Grad-CAM comparison on a meningioma scan.
+    Baseline CNN (left) vs EfficientNetB0 Exp A (right). Overlay highlights model attention."
+
+
+==============================================================
+4. CONCLUSION  (~600 words)
+==============================================================
+
+-- 4a. SUMMARY OF FINDINGS  (~250 words) --
+
+Look at Table 2 and Figure 5 (bar chart) from part2d.
+
+Write in your own words:
+  - Which model performed best overall? EfficientNetB0 Exp A — Acc=93.81%, Macro F1=0.937
+    (Exp B was marginally lower: Acc=93.45%, F1=0.934 — fine-tuning did not improve further)
+  - What was its test accuracy and macro F1? → Acc=93.81%, Macro F1=0.9373
+  - What was the most impactful single improvement?
+    Compare baseline vs first improved step — which change gave biggest jump?
+  - Did Otsu segmentation help? Compare CNN Exp A vs CNN Exp B results.
+    Write honestly — it may or may not have improved things.
+  - What does this tell us about transfer learning vs custom CNNs?
+    (write 2-3 sentences: pretrained models bring domain-general features
+    that are expensive to learn from scratch on small datasets)
+
+-- 4b. LIMITATIONS  (~200 words) --
+
+Write about at least 4 limitations in your own words:
+  1. Single dataset: this model was trained and tested on one Kaggle dataset.
+     It may not generalise to MRI scans from different hospitals, scanners,
+     or protocols. Write why this matters for clinical deployment.
+  2. 2D slices only: MRI is naturally 3D volumetric data. Using 2D slices
+     loses spatial context between consecutive slices.
+  3. Interpretability partially addressed: Grad-CAM heatmaps were generated to
+     visualise model attention (Section 7, part2d). However, this was applied to
+     a small number of samples only. Full clinical interpretability would require
+     systematic validation across hundreds of cases, and clinician review of whether
+     highlighted regions match actual tumour locations on radiology reports.
+  4. MRI scan type not controlled: the dataset mixes different acquisition
+     types (T1, T2, FLAIR). A model trained on mixed types may be less
+     accurate on a specific type.
+  5. Meningioma still hardest class even with class weights — write about this.
+
+-- 4c. FUTURE WORK  (~150 words) --
+
+Write 4-5 suggestions in your own words:
+  1. Systematic Grad-CAM validation: Grad-CAM was demonstrated on select samples
+     in this work. Future work should apply it to all misclassified cases and have
+     clinicians verify whether heatmap regions correspond to actual tumour locations
+  2. Ensemble models: combine predictions from CNN and EfficientNetB0
+     to reduce individual model errors
+  3. 3D volumetric CNN: process the full MRI volume rather than 2D slices
+  4. Multi-hospital dataset: train and test on data from multiple scanners
+     to improve generalisability
+  5. Clinical validation: evaluate the model alongside radiologist decisions
+     to measure actual clinical utility
+
+
+==============================================================
+REFERENCES  (Harvard / Cite Them Right format)
+==============================================================
+Copy these directly into your reference list. Double-check formatting.
+Note: Cite Them Right uses author surname, initial., not full first name.
+
+Abiwinanda, N., Hanif, M., Hesaputra, S.T., Handayani, A. and Mengko, T.R. (2019)
+  'Brain tumor classification using convolutional neural network',
+  in Ibrahim, F. et al. (eds.) World Congress on Medical Physics and Biomedical
+  Engineering 2018. Singapore: Springer, pp. 183–189.
+  doi: 10.1007/978-981-10-9035-6_33.
+
+Goodfellow, I., Bengio, Y. and Courville, A. (2016) Deep Learning.
+  Cambridge, MA: MIT Press. Available at: http://www.deeplearningbook.org
+  (Accessed: 12 May 2026).
+
+He, K., Zhang, X., Ren, S. and Sun, J. (2016) 'Deep residual learning for image
+  recognition', Proceedings of the IEEE Conference on Computer Vision and Pattern
+  Recognition (CVPR), Las Vegas, NV, 27–30 June, pp. 770–778.
+  doi: 10.1109/CVPR.2016.90.
+
+LeCun, Y., Bengio, Y. and Hinton, G. (2015) 'Deep learning', Nature,
+  521(7553), pp. 436–444. doi: 10.1038/nature14539.
+
+Masoudnickparvar (2022) Brain Tumor MRI Dataset [Dataset]. Kaggle.
+  Available at: https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset
+  (Accessed: 12 May 2026).
+
+Otsu, N. (1979) 'A threshold selection method from gray-level histograms',
+  IEEE Transactions on Systems, Man, and Cybernetics, 9(1), pp. 62–66.
+  doi: 10.1109/TSMC.1979.4310076.
+
+Srivastava, N., Hinton, G., Krizhevsky, A., Sutskever, I. and Salakhutdinov, R. (2014)
+  'Dropout: A simple way to prevent neural networks from overfitting',
+  Journal of Machine Learning Research, 15(1), pp. 1929–1958.
+
+Sultan, H.H., Salem, N.M. and Al-Atabany, W. (2019) 'Multi-classification of brain
+  tumor images using deep neural network', IEEE Access, 7, pp. 69215–69225.
+  doi: 10.1109/ACCESS.2019.2919122.
+
+Selvaraju, R.R., Cogswell, M., Das, A., Vedantam, R., Parikh, D. and Batra, D. (2017)
+  'Grad-CAM: Visual explanations from deep networks via gradient-based localization',
+  Proceedings of the IEEE International Conference on Computer Vision (ICCV),
+  Venice, Italy, 22–29 October, pp. 618–626. doi: 10.1109/ICCV.2017.74.
+
+Tan, M. and Le, Q.V. (2019) 'EfficientNet: Rethinking model scaling for convolutional
+  neural networks', Proceedings of the 36th International Conference on Machine
+  Learning (ICML), Long Beach, CA, 9–15 June, pp. 6105–6114.
+
+
+==============================================================
+FIGURES CHECKLIST  (take screenshots from notebooks)
+==============================================================
+
+Fig 1:  Class distribution bar chart         → part1_baseline.ipynb, Section 2
+Fig 2:  Sample MRI images (4 classes)        → part1_baseline.ipynb, Section 2
+Fig 3:  Otsu segmentation grid               → part2a_data_segmentation.ipynb, Section 3
+Fig 4:  Baseline CNN training curves         → part1_baseline.ipynb, Section 4
+Fig 5:  Baseline CNN confusion matrix        → part1_baseline.ipynb, Section 5
+Fig 6:  Misclassified images (baseline)      → part1_baseline.ipynb, Section 6
+Fig 7:  CNN Exp A vs Exp B validation curves → part2b_ann_vs_cnn.ipynb, Section 4
+Fig 8:  ANN vs CNN accuracy bar chart        → part2b_ann_vs_cnn.ipynb, Section 5
+Fig 9:  EfficientNetB0 Exp A vs Exp B curves → part2c_transfer_learning.ipynb, Section 3
+Fig 10: Best model normalised confusion matrix → part2d_final_evaluation.ipynb, Section 3
+Fig 11: Precision-recall curves (all models) → part2d_final_evaluation.ipynb, Section 2
+Fig 12: Side-by-side confusion matrices (6)  → part2d_final_evaluation.ipynb, Section 3
+Fig 13: Macro F1 bar chart (all models)      → part2d_final_evaluation.ipynb, Section 5
+Fig 14: Per-class F1 heatmap                 → part2d_final_evaluation.ipynb, Section 6
+Fig 15: GradCAM per-class grid (4×3)        → part2d_final_evaluation.ipynb, Section 7
+Fig 16: GradCAM Baseline CNN vs EfficientNet → part2d_final_evaluation.ipynb, Section 7
+
+TABLES CHECKLIST:
+Table 1: Hyperparameter comparison          → part2c_transfer_learning.ipynb, Section 4
+Table 2: Final model comparison (all metrics) → part2d_final_evaluation.ipynb, Section 1
+
+
+==============================================================
+WORD COUNT GUIDE
+==============================================================
+Section 1 Introduction:          ~600 words
+Section 2 Methods:              ~1500 words
+Section 3 Results & Analysis:   ~2100 words
+Section 4 Conclusion:            ~600 words
+References + captions:           ~500 words
+TOTAL TARGET:                  ~5300 words
+
+Tip: Write each section immediately after running the corresponding notebook.
+Your observations will be fresh and specific — examiners can tell when results
+are described without actually looking at them.

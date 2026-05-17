@@ -1,0 +1,255 @@
+
+Brain Tumour MRI Classification
+
+
+
+Name: Najish Mahmud
+Student ID: 2514376
+Assignment Progress Report
+Unit Title: Intelligent Systems and Data Mining
+Unit Code: CIS143-6
+Unit Coordinator: Dr Massoud Khodadadzadeh, Dr Yanran Li
+
+
+1. Introduction	3
+1.1 Background	3
+1.2 Objective	3
+1.3 Dataset Overview	4
+2. Methods	5
+2.1 Preprocessing	5
+2.2 Data Segmentation	5
+2.3 Models	7
+ANN	7
+Baseline CNN	8
+Improved CNN Experiment A	8
+Improved CNN Experiment B	8
+EfficientNetB0 Experiment A	9
+EfficientNetB0 Experiment B	9
+GradCAM	9
+2.4 Environment Setup	10
+3. Results Analysis	11
+3.1 Model Performance	11
+3.2 Confusion Matrices	12
+3.3 Precision-Recall Curve	12
+3.4 Analysis	13
+3.5 Challenges	13
+Conclusion	13
+Summary of Findings	13
+Limitations	13
+Future Work	13
+
+
+1. Introduction
+1.1 Background
+The use of Artificial Intelligence in medical imaging is the application of machine learning to assist clinical decision-making by interpreting complex diagnostic data, such as MRI or CT scans. It increases diagnostic efficiency and reduces human error  in a high pressure clinical environment. Early detection of brain tumors is an important factor for a patient's survival. It allows the patient to get less invasive surgical interventions and more effective radiotherapy. If a diagnosis is missed or delayed, a patient can suffer severe neurological damage, loss of motor function and reduced life expectancy.
+
+The “Alexnet moment” in the ImageNet competition in 2012 is widely regarded as a turning point which ignited the current AI revolution, especially in healthcare. A Convolutional Neural Network trained on GPUs was able to reduce error rate from 26% to 15% by extracting visual features automatically from raw pixels. These capabilities gave CNN models an edge over traditional methods that required “hand-crafted” feature engineering. Deep learning introduces multiple layers of abstraction to find patterns in intricate structures in large datasets to allow data processing (LeCun, Bengio and Hinton, 2015). In neuro-oncological context, deep learning has shown superiority at multi-class classification for brain tumors compared to standard machine learning (Sultan, Salem and Al-Atabany, 2019).
+
+A clinically relevant AI tool must be able to differentiate between distinct pathological types, primarily Gliomas, Meningiomas, and Pituitary tumours.
+Glioma: A type of tumour that starts in the glial (supportive) cells of the brain. They are often invasive and can be highly malignant.
+Meningioma: A tumour that arises from the meninges (the membranes covering the brain and spinal cord). They are usually slow-growing and often benign.
+Pituitary Tumour: Abnormal growths that develop in the pituitary gland at the base of the brain. These can interfere with hormone levels and affect vision.
+1.2 Objective
+The goal of this study is to investigate the application of deep learning in brain tumor classifications from MRI Scan images. A robust preprocessing pipeline is constructed to systematically evaluate the effects of the architectural improvements, data segmentation and transfer learning on classification accuracy across four tumor categories (Glioma, Meningioma, Pituitary, and No Tumour).
+
+The study designs a progression from a standard Artificial Neural Network (ANN) to a custom Convolutional Neural Networks (CNNs) to evaluate the importance of spatial feature extraction in medical imaging. The CNN model is saved as a baseline model and compared with ANN and EfficientNetB0. EfficientNetB0 a pretrained CNN baseline model of the EfficientNet family. This model is designed to achieve high accuracy in image classification tasks. This model also ensures that the pipeline is highly efficient in terms of parameters and computational costs (Tan and Le, 2019).
+Each model is benchmarked against baseline CNN by measuring the incremental gain from each improvement, such as regularization, Otsu segmentation, and transfer learning. Benchmark metrics include accuracy, macro F-1, macro precision and macro recall. The study also identifies three common machine learning challenges, overfitting, class imbalance and data leakage.
+1.3 Dataset Overview
+The Brain Tumor MRI Dataset was used from the kagglehub repository named "masoudnickparvar/brain-tumor-mri-dataset". The dataset consists of 7200 images which belong to four distinct classes, namely Glioma, Meningioma, Pituitary and No Tumour. Each class has 1800 images which denotes that the dataset is perfectly balanced (25% each) which shows equal representation. Of 1800 images for each category, 1400 are for training and 400 are for testing. The database has two folders, Testing and Training. Each of these folders has four folders labeled glioma, meningioma, notumor and pituitary which holds the respective images. Unlike most medical dataset, no resampling or weighting was required.
+
+Figure 1.3.1: Class distribution bar chart.
+
+All images are resized to 224x224 pixels. Even though the MRI scans are greyscale, loaded as 3-channel RGB arrays as Keras/TensorFlow’s ImageDataGenerator loads images as RGB by default. EfficientNetB0 also expects 3-channel input since it was pretrained on ImageNet (which consists of colored photos).
+
+Figure 1.3.2: Sample MRI image by class
+
+The Glioma images can be identified by an irregular, infiltrating bright mass that spreads into surrounding brain tissue, making boundaries difficult to define. Meningioma tumor can be identified as a distinct bright region near the edge of the brain, often pressing against the skull. Pituitary tumours are identified as a small, well-defined bright spot in the central lower region of the brain. No tumor brains show a normal brain structure with no concentrated brain mass. Some scans contain variation in contrast and orientation.
+2. Methods
+2.1 Preprocessing
+The Brain Tumor MRI Dataset from the kagglehub repository named "masoudnickparvar/brain-tumor-mri-dataset" was accessed using the kagglehub library using the dataset_download function. After downloading, the dataset is saved in a local google drive folder for persistence. A stratified split of 70/15/15 was done so that each class is represented proportionally in each split. To prevent data leakage, data augmentation was applied to training splits only.
+
+The validation and test splits are only rescaled instead of augmentation. Class weights are computed from training labels only. This way, the information from test and validation splits are not leaked to training, thus making the evaluation process transparent. The augmentation techniques used in this data preparation are rotation_range=15, zoom_range=0.10, horizontal_flip, width/height shift of 0.1 for each. Zooming simulates different scan distances. As tumors can appear on either side of a brain, horizontal flips were used to take care of this edge case.The image pixel values are rescaled to [0, 1] and then divided by 255. The images were also resized to a resolution of 224x244 which is a standard resolution for pretrained networks.
+2.2 Data Segmentation
+Otsu thresholding technique is used to separate bright brain pixels from black background pixels. This helps to avoid manual thresholding and minimized within-class intensity variancy (Otsu, 1979). Morphological closing is used to fill small holes in the mask. Largest contour extraction to keep only the main brain region. The pixels from the skull edges and scan background can unnecessarily activate CNN filters. Masking out these regions forces the model to attend to the pixel of tumor bearing tissues only.
+
+
+
+Figure 2.2.1: Otsu brain extraction - Left: original MRI, Centre: binary mask,  Right: segmented brain region.
+In the figure 2.2.1, the left columns denote the original MRI scans, center columns are the binary mask that outlines regions like eyes, skull edges etc and the right column denotes the segmented brain regions.
+
+
+Figure: 2.2.2: Sample segmented training images.
+
+2.3 Models
+Three models are used in this model using different settings. Namely, CNN, ANN and EfficientNetB0. CNN model is used as a baseline to compare with EfficientNetB0.
+
+### TODO: why what models were used
+ANN
+Architecture:
+Flatten(224×224×3 = 150,528 inputs)
+Dense(512, relu)
+Dropout(0.4)
+Dense(256, relu)
+Dropout(0.3)
+Dense(128, relu)
+Dense(4, softmax)
+Optimiser:
+Adam, LR=1e-4, EarlyStopping patience=5
+
+In this model, for a 224x224 RGB image, there are 224x224x3 = 150,528 input features. This input size is too large for meaningful spatial reasoning. A tumour at the top-left and bottom right are treated equally. CNNs solves this by utilizing spatial locality and translation invariance which is completely ignored by ANNs (LeCun, Bengio and Hinton, 2015). This model has 77,235,588 trainable parameters.
+Baseline CNN
+Architecture:
+Conv2D(32, 3×3, relu) → MaxPool(2×2)
+Conv2D(64, 3×3, relu) → MaxPool(2×2)
+Conv2D(128, 3×3, relu) → MaxPool(2×2)
+Flatten
+Dense(256, relu)
+Dense(4, softmax)
+Optimiser:
+Adamax, LR=0.001, 20 epochs — no regularisation, no callbacks
+
+This model starts by progressing through 32→64→128 Conv2d filters. Each level extracts helps extract more complex features. For fair comparison, no batch normalization, dropout or early stopping is applied for fair comparison with true baseline. The model has 22,245,700 trainable parameters
+Improved CNN Experiment A
+Architecture:
+4× [Conv2D(32/64/128/256, 3×3, no bias) → BatchNorm → ReLU → MaxPool(2×2)]
+GlobalAveragePooling2D
+Dense(256, relu)
+Dropout(0.4)
+Dense(4, softmax)
+Optimiser:
+Adam, LR=5e-4, up to 30 epochs
+Callbacks:
+EarlyStopping(patience=7), ReduceLROnPlateau(factor=0.5, patience=3), ModelCheckpoint
+Class weights:
+computed from training set only (all ≈1.0 — dataset is balanced)
+
+A fourth conv block, 256 was added in the pipeline to add depth to the model filters. To stabilize and speed up training, a BatchNorm normalization layer is introduced. The GlobalAveragePooling layer replaces flatten from baseline which uses far fewer parameters and minimizes overfitting risks. To prevent co-adaptation and forcing distributed representation, Dropouts are used which randomly zeroes neurons during training (Srivastava et al., 2014). Class weights are computed to use in this experiment as a precaution against class imbalance. All of them show ≈ 1.0 which represents a perfectly balanced dataset. EarlyStopping(patience=7) was also introduced to stop training if there is no major improvement for 7 consecutive epochs. For input preprocessing, only augmentation is applied.
+Improved CNN Experiment B
+Architecture:
+Same as Improved CNN Experiment A, but learning rate was changed from 5e-4 to 1e-3 dropout value changed to 0.3 from 0.4 and input preprocessing used Otsu segmentation + augmentation. Otsu segmentation removes the skull and background so that the Conv filters can focus on brain tissue only.
+
+###### TODO - Compare result to Exp A: did Otsu help? Look at your Table 2 (part2d Section 1) — write honestly whether Exp B matched, exceeded, or fell below Exp A
+
+EfficientNetB0 Experiment A
+EfficientNetB0 is the baseline model of the EfficientNet model family which was trained on a large dataset (ImageNet with 1.4M images and 1000 classes) (Tan and Le, 2019). Transfer learning is a process that reuses feature representation learned during its training process. This technique is useful when the target dataset is smaller compared to the model's capacity. This experiment uses transfer learning on EfficientNetB0 to use the feature representation learned from ImageNet dataset to be used on the target MRI image dataset.
+
+Architecture:
+Input(224×224×3)
+EfficientNetB0(imagenet weights, include_top=False, trainable=False)
+GlobalAveragePooling2D
+Dense(256, relu)
+Dropout(0.3)
+Dense(4, softmax)
+Optimiser:
+Adam LR=1e-3, up to 25 epochs, training=False passed to base (frozen BN stats)
+
+There are a total of 4,378,555 params from which 328,964 are trainable. The bases are frozen, only 256-dense, dropout and softmax head is trained to keep the pretrained weights unchanged. Training the full EfficientNet model .
+EfficientNetB0 Experiment B
+The only changes from EfficientNetB0 Experiment A are that the top 30 layers of EfficientNetB0 are unfrozen, learning rare is dropped to 1e-5 and there are now 1,825,124 trainable parameters after unfreezing.
+
+To preserve the ImageNet-learned features in the unfrozen layers, the learning rate must be extremely low. The expectation from this experiment is that the upper layers will adapt to MRI-specific textures while the lower layers keep the general edges/shapes.
+
+### TODO: - Result: look at Table 2 - Exp B was marginally lower than Exp A. Write why this can happen. The dataset may be small enough that frozen features are already sufficient, and fine-tuning adds noise rather than signal.
+GradCAM
+Grad-CAM is an explainable AI technique that highlights important regions of an image using visual heatmaps. It is used for evaluation after obtaining the experiments of six classification models. Grad-CAM utilizes the gradients of the predicted class scores of the last convolutional layer to produce a spatial heatmap. This is applied to EfficientNetB0 Exp A and Baseline CNN to compare the result to determine whether each model attends on the same input.
+2.4 Environment Setup
+The experiments were conducted in Google colab using its T4 gpu. Google colab provides a generous free tier for T4 GPU which enables faster computation than CPUs for AI related tasks. The libraries used for this study are as follows:
+Tensorflow/Keras were used for model building.
+Scikit-learn was used to import utilities for metrics and evaluation like confusion matrix, accuracy etc. It was also used for splits and class weights generation.
+OpenCV was used for Otsu segmentation.
+Pandas and Numpy were used for data handling and data conversion.
+Matplotlib was used for visualization.
+
+
+Figure 2.4.1: Hyperparameter comparison.
+
+Some callback functions were also introduced in the experiment pipelines to increase efficiency and reduce error rates. 
+EarlyStopping was applied with a patience value of 7 epochs to stop training when val_loss stops improving.
+ReduceLROnPlateau was applied to half the learning rate when val_loss plateaus up to 3 epochs.
+ModelCheckpoint saves the best model weights based on the val_loss.
+The training epochs for each models were:
+Baseline=20, ANN=25, CNN=30 and EfficientNetB0=25
+
+3. Results Analysis
+3.1 Model Performance
+
+
+Figure 3.1.1: Model performance comparison.
+The figure 3.1.1 a comparison between the performance of different models used in this experiment using metrics such as Accuracy, Macro Precision, Macro Recall and Macro F1. Of all the models and experiments, EfficientNetB0 Experiment A shows the highest accuracy and F1 score. The ranking order from worst to best are:
+ANN < Baseline CNN < CNN Exp B (Otsu) < CNN Exp A < EfficientNetB0 Exp B < EfficientNetB0 Exp A.
+EfficientNetB0 Exp A achieved 9.14% more accuracy improvements as well as nearly 10% F1-score than the baseline CNN model. Macro F1-score shows the most dramatic changes across all models. Transfer learning using EfficientNetB0 was the key reason why these improvements were achieved. The model used its standard knowledge of edge and textures from pre-trained weights to deliver higher performance with limited MRI image data provided. The Macro F1-score shows similar improvements like accuracy because the datasets class distribution and splits are well balanced. An imbalanced dataset would result in a more diverse result.
+
+3.2 Confusion Matrices
+
+Figure 3.2.1: Side by side comparison of Confusion Matrices.
+The confusion matrices show the areas where the models made wrong predictions. The diagonal entries represent the correct predictions. The off-diagonal entries are misclassifications. ANN model struggled with meningioma. Its F1-score for meningioma was only 0.2642 and recall was 0.1667. It only correctly identified 1 out of 6 actual meningioma cases. It tends to identify meningioma as pituitary or glioma. Baseline CNN shows high precision of 0.9783 but a low recall value of 0.6429. It denotes that many actual glioma cases were missed. Its meningioma recall was improved to 0.7048. The improved CNN in both experiments showed similar performance of F1-score in case of meningioma. It appears that Otsu processing could not improve any case of meningioma. Meningioma is the weakest class among all custom CNN models.
+
+
+
+
+Figure 3.2.2: Normalized confusion matrix for best model.
+EfficientNetB0 Experiment A was able to reduce the total misclassification by 6.2% (52 out of 840). Out of 52 errors, 34 belong to meningioma. The most confusing pair was meningioma being treated as glioma (18 cases) and then meningioma being treated as pituitary (12 cases).
+
+Figure 3.2.3: Misclassified Samples of EfficientNetB0
+
+Meningioma masses are mostly found near the edge of the brain. Sometimes they appear as irregular masses which can visibly resemble glioma. The brain mass of meningioma and glioma shares visual similarity compared to “no tumor” and pituitary class. This visual overlap resulted in 27 errors between those two classes.
+
+3.3 Precision-Recall Curve
+
+Figure 3.3.1: Precision Recall Curve for all models.
+
+A precision recall curve helps to show per class performance separately. It also makes sure that failure modes are visible. A model can ignore a certain class like meningioma and still achieve 75%+ accuracy. In the figure 3.3.1, ANN shows the lowest value micro-average AP of 0.62, followed by Baseline CNN and Improved CNN Exp A (0.95), Improved CNN Exp B (0.96) and EfficientNetB0 Exp A and B (0.98). The gap is most visible for the meningioma curve. This class has the lowest AP across all models in all performance levels.
+
+For meningioma’s curve, a dip in the lower-left area of the plot means that the model struggles to maintain precision and recall simultaneously. The classifier has to either show a lot of false alarms or miss an actual meningioma case. It cannot do both.
+
+For a clinical deployment, optimizing meningioma would be a priority even though it reduces some precision. A low recall for meningioma is a dangerous failure. A false negative can cause a tumor to remain undetected. A less severe outcome can be false positive which will just lead to unnecessary follow-up scans.
+3.4 Training Curve Analysis
+
+Figure 3.4.1: Baseline CNN training curve.
+
+In the figure 3.4.1, we can see that in epoch 1, the train_acc was 54.90% and val_acc was 74.64% which was higher early on. At the end of 20 epochs, train_acc reached 88.60% whereas val_acc reached up to 83.45%. The gap between the first and final epoch is 5.2%. The val_loss in epoch 16 was 0.3860 which is much higher than epoch 20s val_loss of 0.4928. From epoch 1, validation accuracy was higher than training accuracy as dropout was active during training. When the epochs reached 14, the training accuracy improved while the validation accuracy fluctuated. At the end of 20 epochs, training accuracy was 88.60% while validation accuracy was only 83.45%. From epoch 16 to 20, validation accuracy improved from its lowest point by 0.1 and the training loss kept declining. This denotes overfitting issues as the model improved on training but performed worse with unseen data. Training kept worsening as there were no EarlyStopping or ReduceLROnPlateau callbacks.
+
+Figure 3.4.2: Improved CNN experiment A vs B training curve.
+
+The ReduceLROnPlateau callback function was triggered multiple times during the training phase at epochs 4, 24 and 27. Early stop was not triggered and so it ran all the epochs which denoted that there were no overfitting issues. The training and validation gap was smaller than the baseline which shows consistent performance due to BatchNormalization and Dropout(0.4). The final accuracy was 
+
+### TODO: add more info for improved CNN.
+
+
+Figure 3.4.2: EfficientNetB0 experiment A vs B training curve.
+
+In the case of EfficientNetB0, for experiment A with frozen base, validation accuracy started at 83.33% and by epoch 5, it was 90.83%.  All the 25 epochs were run and the final accuracy was 93.81%. For experiment B with top 30 layers unfrozen, the validation accuracy started even higher at 89.76%. Reduced plateau was triggered in epoch 4 where learning rate dropped from 1e-5 to 3e-6. The final accuracy was 93.45% which is slightly below Experiment A.
+
+EfficientNetB0 converged faster than any custom CNN model. The validation accuracy was 83.33% in epoch 1. Baseline CNN only achieved this after around 10 epochs. The pretrained weights from ImageNet gave a headstart for the model in this dataset. Experiment B used a very low learning rate to avoid overwriting the pretrained weights. There is a marginal difference between the final accuracy of Experiment A and B. It denotes that partially unfreezing the top layers did not improve generalization in the dataset. The frozen base approach was enough to recognize features from samples. Even after fine tuning in Experiment B, the difference was marginally lower than Experiment A. This behaviour denotes that the frozen base already extracted sufficient features to improve generalisation than baseline CNN in the dataset. This is also proven by the training curve as the train/val tracking in EfficientNetB0 is much tighter compared to baseline CNN. 
+3.5 Challenges
+Overfitting
+In the baseline CNN experiment, at epoch 20, the training accuracy was 88.60% whereas the validation accuracy was 83.45%. The val_loss rose from 0.386 to 0.493 between epoch 16 and 20. This issue was addressed by applying a dropout value of 0.4 in the improved CNN experiments. This dropout value of 0.4 forward passes zeroes randomly to 40% of the neurons which prevents co-adaptation (Srivastava et al., 2014). BatchNormalization was also introduced to normalize activations. This also balances the gradients. EarlyStopping included stopping epochs if training didn’t improve after 7 epochs. Even though it did not trigger, it was a safety check. Data augmentation techniques like rotating, horizontal flipping, zoom and shift were introduced to skip training sample memorisation. 
+
+The Improved CNN experiments still showed some gap between training and validation accuracy, but the gap was minimized compared to baseline CNN. EfficientNetB0 showed the smallest gap which suggests that pretrained features generalises better than custom CNN models.
+Class Imbalance
+No class imbalance issue was present as the dataset was perfectly balanced. This was confirmed using scikit-learn’s compute_class_weight function which showed that all the class weights came out exactly as 1.0. This was a methodological precaution to verify that the dataset was balanced. Meningioma class had the lowest per-class F1 (0.8822 in EfficientNetB0 ExpA) because of visual similarity as meningioma’s appearance overlaps with glioma. This denotes that it was not a quantitative but a visual issue.
+Data Leakage
+Data leakage in a dataset is the leakage of information from the training set to the test set. This causes the evaluation result to be over optimistic. Data augmentation was only applied to training datasets only. If the augmentations were done on validation data, it would inflate the validation accuracy. If class weights were computed from all 5600 images instead of 3920 training images, the label distribution from the unseen data would have shaped training. Data leakage would also occur if global normalisation statistics (mean/std) calculated from the full dataset instead of using separate ImageDataGenerator instances for training and validation dataset.
+
+All these data leakage scenarios were prevented by the following:
+Data Augmentation was only applied to training data splits only.
+Class weights were computed from the training dataframe only.
+Separate ImageDataGenerator instances were used for training and validation data splits.
+Zero data overlap was verified between training.
+3.6 Grad-CAM Interpretability Analysis
+
+Figure 3.6.1: 
+
+
+Figure 3.6.2:
+ 
+
+
+
+Conclusion
+Summary of Findings
+Limitations
+Otsu’s limitations
+Future Work
+
+

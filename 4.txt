@@ -1,0 +1,115 @@
+Section 4 — Conclusion
+
+  ---
+  4a. Summary of Findings (~250 words)
+
+  Opening sentence: State the overall aim of the project in one sentence — to investigate whether deep learning models could classify brain tumour MRI images
+   across four categories, and which architectural approach performed best.
+
+  Performance progression — write this as a narrative, not just a list:
+
+  Cover these points in order:
+  1. The ANN set the lowest benchmark at 60.00% accuracy (Macro F1: 0.5538), confirming that treating each pixel independently without spatial context is
+  fundamentally unsuited to image classification.
+  2. The Baseline CNN raised accuracy to 85.95% (Macro F1: 0.8552) using three convolutional blocks alone, showing that spatial feature extraction provides a
+   substantial improvement even without any regularisation.
+  3. Adding regularisation techniques (BatchNorm, Dropout, EarlyStopping, ReduceLROnPlateau) in CNN Exp A pushed accuracy to 89.52% (F1: 0.8957) — a gain of
+  3.57 percentage points over the baseline.
+  4. Otsu preprocessing in CNN Exp B produced 89.40% accuracy (F1: 0.8963) — marginally lower than CNN Exp A despite the additional preprocessing step. Write
+   this honestly: Otsu segmentation did not improve performance here, and may have removed some contextual information the model found useful.
+  5. Transfer learning brought the biggest gain: EfficientNetB0 Exp A achieved 93.81% accuracy
+  (F1: 0.9373), a 7.86 percentage point improvement over the baseline CNN and 4.29 points over
+  the best custom CNN. Fine-tuning (Exp B, top 30 layers, LR=1e-5) produced 93.45% — marginally
+  lower than the frozen base, showing that the pretrained representations were already
+  sufficiently discriminative without further adaptation.
+  6. ConvNeXtSmall Exp A (Liu et al., 2022) achieved [fill after run]% accuracy (F1: [fill]).
+  Write that ConvNeXt's modernised CNN design — depthwise 7×7 convolutions, LayerNorm, and
+  inverted bottleneck blocks inspired by Vision Transformers — represents the current
+  state-of-practice for image classification. Compare to EfficientNetB0: if ConvNeXt is higher,
+  note the gain; if similar, write that both are competitive and the architectural difference
+  did not translate to a meaningful accuracy difference on this relatively small dataset.
+  7. Fine-tuning ConvNeXtSmall (Exp B, top 50 layers, LR=5e-6) produced [fill]%. Write
+  whether the pattern mirrors EfficientNetB0 (fine-tuning did not help) or differs.
+  8. The Wilcoxon signed-rank test confirmed statistical significance for [fill: e.g. the gap
+  between Baseline CNN and CNN Exp A, p = X]. Write that smaller gaps — such as between
+  EfficientNetB0 Exp A and ConvNeXtSmall — [were / were not] statistically significant.
+
+  Closing sentence: Write a sentence noting that the three-family progression (custom CNN →
+  EfficientNetB0 → ConvNeXtSmall) demonstrates that both transfer learning and architectural
+  modernisation independently contribute to performance gains, and that cost-sensitive
+  evaluation confirmed [best model] also minimises clinically dangerous false negatives most
+  effectively.
+
+  ---
+  4b. Limitations (~200 words)
+
+  Write one paragraph per limitation. Keep each to 2–3 sentences.
+
+  Limitation 1 — Single dataset generalisation:
+  - The model was trained and tested exclusively on one Kaggle dataset (masoudnickparvar). All images come from a single source with a consistent format.
+  - Write that MRI scans from different hospitals, scanner manufacturers, or acquisition protocols may look different enough that the model's performance
+  would degrade. This matters significantly for any clinical deployment scenario.
+
+  Limitation 2 — 2D slices lose volumetric context:
+  - MRI data is inherently three-dimensional — a tumour exists across multiple consecutive slices. This project processed individual 2D slices in isolation.
+  - Write that 3D volumetric models (such as 3D CNNs) would be able to exploit spatial relationships between slices, potentially improving both accuracy and
+  localisation.
+
+  Limitation 3 — Interpretability was partial:
+  - Grad-CAM heatmaps were generated for a small number of example images. While these offer a qualitative view of model attention, they were not validated
+  systematically.
+  - Write that genuine clinical interpretability would require applying Grad-CAM across all misclassified cases and having a qualified radiologist verify
+  whether the highlighted regions correspond to actual tumour locations annotated on radiology reports.
+
+  Limitation 4 — Mixed MRI acquisition types:
+  - The dataset mixes different MRI scan types (T1, T2, FLAIR) without labelling which type each image is. Different acquisition types emphasise different
+  tissue properties.
+  - A model trained on mixed types may be less precise when deployed in a setting that uses only one acquisition type.
+
+  Limitation 5 — Meningioma remained the hardest class:
+  - Even in the best model (EfficientNetB0 Exp A), meningioma had the lowest F1 score (0.8822) despite having exactly the same number of training images as
+  other classes.
+  - Write that addressing this would likely require targeted strategies such as hard example mining or class-specific augmentation, rather than simply
+  collecting more data.
+
+  ---
+  4c. Future Work (~150 words)
+
+  Write each suggestion as 2 sentences: what would be done, and why it would help.
+
+  Suggestion 1 — Systematic Grad-CAM validation:
+  - Apply Grad-CAM to every misclassified case in the test set, not just selected examples. Have clinical experts verify whether heatmap activation regions
+  align with tumour boundaries documented in radiology reports — this would move interpretability from illustrative to clinically meaningful.
+
+  Suggestion 2 — Ensemble modelling:
+  - Combine predictions from EfficientNetB0, ConvNeXtSmall, and the improved custom CNN using
+  soft voting or stacking. Individual model families make different types of errors, and
+  ensembling tends to reduce overall error by exploiting architectural diversity.
+
+  Suggestion 3 — 3D volumetric CNN:
+  - Replace 2D slice processing with a 3D CNN that takes the full MRI volume as input. This would allow the model to capture inter-slice spatial
+  relationships, which are particularly relevant for tumour boundary identification.
+
+  Suggestion 4 — Multi-site dataset:
+  - Collect and train on data from multiple hospitals and scanner types. Performance on unseen scanner protocols is the critical test for clinical deployment
+   readiness.
+
+  Suggestion 5 — Targeted meningioma improvement:
+  - Apply hard example mining specifically to meningioma cases — during training, upweight the examples the model consistently misclassifies. This could
+  reduce the persistent meningioma error pattern without requiring additional data collection.
+
+  ---
+  Numbers to keep on hand while writing Section 4:
+  - ANN: 60.00% / F1: 0.5538
+  - Baseline CNN: 85.95% / F1: 0.8552
+  - CNN Exp A: 89.52% / F1: 0.8957
+  - CNN Exp B (Otsu): 89.40% / F1: 0.8963 — Otsu did NOT improve
+  - EfficientNetB0 Exp A: 93.81% / F1: 0.9373
+  - EfficientNetB0 Exp B: 93.45% / F1: 0.9337 — fine-tuning did NOT improve
+  - ConvNeXtSmall Exp A: [fill after running part2c]
+  - ConvNeXtSmall Exp B: [fill after running part2c]
+  - Meningioma F1 in best model: [update after ConvNeXt run]
+  - No Tumour F1 in best model: [update after ConvNeXt run]
+  - Training images: 3,920 across 4 classes (980 per class)
+  - Wilcoxon p-values: [fill from part2d Section 8 output]
+  - Cost per sample scores: [fill from part2d Section 9 output]

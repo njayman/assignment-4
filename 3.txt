@@ -1,0 +1,312 @@
+---
+Section 3 — Results and Analysis
+
+---
+3a. Model Performance Table (~200 words)
+
+Insert Table 2 first (screenshot from part2d Section 1). These are your exact values:
+
+┌──────────────────────┬──────────┬─────────────────┬──────────────┬──────────┐
+│        Model         │ Accuracy │ Macro Precision │ Macro Recall │ Macro F1 │
+├──────────────────────┼──────────┼─────────────────┼──────────────┼──────────┤
+│ ANN                  │ 0.6000   │ 0.6464          │ 0.6000       │ 0.5538   │
+├──────────────────────┼──────────┼─────────────────┼──────────────┼──────────┤
+│ Baseline CNN         │ 0.8595   │ 0.8715          │ 0.8595       │ 0.8552   │
+├──────────────────────┼──────────┼─────────────────┼──────────────┼──────────┤
+│ CNN Exp A            │ 0.8952   │ 0.8980          │ 0.8952       │ 0.8957   │
+├──────────────────────┼──────────┼─────────────────┼──────────────┼──────────┤
+│ CNN Exp B (Otsu)     │ 0.8940   │ 0.9098          │ 0.8940       │ 0.8963   │
+├──────────────────────┼──────────┼─────────────────┼──────────────┼──────────┤
+│ EfficientNetB0 Exp A │ 0.9381   │ 0.9383          │ 0.9381       │ 0.9373   │
+├──────────────────────┼──────────┼─────────────────┼──────────────┼──────────┤
+│ EfficientNetB0 Exp B │ 0.9345   │ 0.9349          │ 0.9345       │ 0.9337   │
+├──────────────────────┼──────────┼─────────────────┼──────────────┼──────────┤
+│ ConvNeXtSmall Exp A  │ [run]    │ [run]           │ [run]        │ [run]    │
+├──────────────────────┼──────────┼─────────────────┼──────────────┼──────────┤
+│ ConvNeXtSmall Exp B  │ [run]    │ [run]           │ [run]        │ [run]    │
+└──────────────────────┴──────────┴─────────────────┴──────────────┴──────────┘
+
+NOTE: Fill in ConvNeXtSmall values after running part2c. Based on ImageNet-21k pretraining
+and 2022 architecture, expected range: 93–96% accuracy. Update the ranking and all
+numerical claims below accordingly once you have the real numbers.
+
+What to write (3–4 sentences, in your own phrasing):
+
+1. Name the best model once ConvNeXtSmall results are in — likely ConvNeXtSmall Exp A or B.
+2. Give the full ranking from worst to best: ANN → Baseline CNN → CNN Exp B → CNN Exp A →
+   EfficientNetB0 Exp B → EfficientNetB0 Exp A → ConvNeXtSmall Exp B → ConvNeXtSmall Exp A
+   (update if actual numbers differ).
+3. Quantify the overall improvement: from ANN (60.0%) to best model is a ~36 percentage point
+   gain. From Baseline CNN to best model is ~10 percentage points.
+4. Note that macro F1 closely tracks accuracy here because the dataset is perfectly balanced —
+   the two metrics would diverge on an imbalanced dataset.
+5. Briefly mention that the Wilcoxon signed-rank test (Section 3g) confirms which differences
+   are statistically significant vs. marginal.
+
+---
+3b. Confusion Matrices (~400 words)
+
+Insert Figure 12 (side-by-side confusion matrices from part2d Section 3).
+Insert Figure 10 (normalised confusion matrix, best model).
+
+What to write sentence by sentence:
+
+Opening (1 sentence): State that confusion matrices show where each model made errors — the diagonal holds correct predictions, off-diagonal entries are
+misclassifications.
+
+For ANN (2–3 sentences):
+- The ANN struggled severely with meningioma. Its F1 for meningioma was only 0.2642, with recall of just 0.1667 — meaning it correctly identified only
+about 1 in 6 actual meningioma cases.
+- It tended to classify meningioma samples as pituitary or glioma.
+
+For Baseline CNN (2 sentences):
+- Baseline CNN showed a very different error pattern: glioma had high precision (0.9783) but low recall (0.6429), meaning many actual glioma cases were
+missed even though its meningioma recall improved to 0.7048.
+- Note: the confusion matrix will show glioma has the most off-diagonal misses in the baseline.
+
+For Improved CNNs (2 sentences):
+- CNN Exp A raised meningioma F1 to 0.7754, a meaningful gain. Meningioma remained the weakest class across all custom CNN models.
+- CNN Exp B performed similarly (meningioma F1 = 0.7699) — Otsu preprocessing did not noticeably improve meningioma specifically.
+
+For EfficientNetB0 Exp A (2–3 sentences):
+- EfficientNetB0 Exp A reduced total misclassifications to 52 out of 840 (6.2%). Meningioma was still the dominant source of error — 34 of the 52 errors
+involved meningioma as either the true or predicted label.
+- The most frequent confusion pair was meningioma predicted as glioma (18 cases), followed by meningioma predicted as pituitary (12 cases).
+
+Analysis paragraph — why meningioma is hardest (3–4 sentences, look at your sample images Figure 2 when writing this):
+- The challenge is purely visual, not a data quantity problem — all four classes have exactly 1,400 training images each.
+- Look at your sample images and describe what you see: meningiomas often appear near the edge of the brain as a defined but sometimes irregular mass,
+which can visually resemble glioma (which is diffuse and infiltrating) depending on the scan slice.
+- Write that unlike pituitary tumours (which appear centrally and are small) or "no tumour" scans (which have no bright mass at all), meningioma and glioma
+ share enough visual overlap that even the best model made 27 errors between those two classes alone (18+9).
+
+---
+3c. Precision-Recall Curves (~300 words)
+
+Insert Figure 11 (precision-recall curves from part2d Section 2).
+
+What to write:
+
+Opening — why P-R curves matter (2 sentences):
+- Explain that accuracy alone can be misleading: a model can ignore meningioma entirely and still achieve ~75% accuracy because the other three classes are
+ easier. Precision-recall curves show per-class performance separately, making failure modes visible.
+
+Trend across models (2–3 sentences):
+- Look at the micro-average area under the P-R curve (AP) for each model in your figure and write the actual values you see. The ordering should be ANN
+lowest, EfficientNetB0 Exp A highest.
+- Write that the gap is most visible in the meningioma curve — this will have the lowest AP across all models at every performance level.
+
+What low AP for meningioma means (2 sentences):
+- If the meningioma curve dips into the lower-left area of the plot, it means the model struggles to maintain both precision and recall simultaneously for
+that class.
+- Write the specific interpretation: the classifier has to accept either a lot of false alarms (low precision) or miss many actual meningioma cases (low
+recall) — it cannot do both well at once.
+
+Clinical implication (1–2 sentences):
+- In a clinical setting, low recall for meningioma is the more dangerous failure: a false negative means a tumour goes undetected. A false positive means
+an unnecessary follow-up scan, which is a much less severe outcome.
+- Write that this means for any clinical deployment, optimising recall for meningioma specifically would be a priority even at the cost of some precision.
+
+---
+3d. Training Curves Analysis (~400 words)
+
+Reference: Figure 4 (baseline), Figure 7/8 (CNN Exp A vs B), Figure 9 (EfficientNetB0 Exp A vs B).
+
+Baseline CNN (from your actual training data):
+
+The numbers:
+- Epoch 1: train acc = 54.90%, val acc = 74.64% (val was actually higher early on — write this)
+- Epoch 20 (final): train acc = 88.60%, val acc = 83.45%
+- Gap at final epoch: ~5.2 percentage points (train higher than val)
+- Val loss at epoch 20: 0.4928 — noticeably higher than the best val loss seen around epoch 16 (0.3860)
+
+What to write (3–4 sentences):
+1. Early on (epoch 1), validation accuracy was actually higher than training accuracy — this is because dropout is active during training only.
+2. From around epoch 14 onwards, the training accuracy continued to rise while validation accuracy plateaued and fluctuated. By epoch 20, training accuracy
+ reached 88.60% while validation accuracy was only 83.45%, a gap of about 5.2 percentage points.
+3. Validation loss rose from its lowest point (~0.39 at epoch 16) to 0.49 at epoch 20 — while training loss kept declining. This is the classic overfitting
+ signature: the model improved on training data but degraded on unseen data.
+4. Since no EarlyStopping or ReduceLROnPlateau callbacks were used in the baseline, training continued even as validation performance worsened.
+
+CNN Exp A vs CNN Exp B (Otsu)
+
+Key numbers for Exp A:
+- LR: 0.0005, Dropout: 0.4, input: standard augmented images
+- Val accuracy: 87.98% (from hyperparameter table)
+- Test accuracy (final eval): 89.52%, Macro F1: 0.8957
+- ReduceLROnPlateau triggered at epochs 4, 24, and 27. EarlyStopping did NOT trigger — trained the full 30 epochs.
+
+Key numbers for Exp B:
+- LR: 0.001 (double Exp A), Dropout: 0.3 (less regularisation), input: Otsu-segmented images
+- Val accuracy: 87.38% (from hyperparameter table)
+- Test accuracy (final eval): 89.40%, Macro F1: 0.8963
+- ReduceLROnPlateau also triggered multiple times. EarlyStopping did NOT trigger — trained the full 30 epochs.
+
+What to write (3–4 sentences):
+
+1. Both improved CNNs used ReduceLROnPlateau and EarlyStopping callbacks. In CNN Exp A, ReduceLROnPlateau triggered at epochs 4, 24, and 27, each time
+reducing the learning rate when validation loss stopped improving. EarlyStopping did not trigger for either experiment — both models trained the full 30
+epochs, suggesting neither overfit severely enough to meet the stopping criterion.
+2. Compared to the baseline, the train/val accuracy gap was visibly smaller in both experiments, consistent with the regularisation effect of Dropout and
+BatchNormalization.
+3. CNN Exp B was deliberately designed as a distinct experiment from Exp A: it used a higher learning rate (0.001 vs 0.0005), weaker dropout (0.3 vs 0.4),
+and Otsu-segmented images as input rather than raw augmented images. Despite these changes, final test accuracy was marginally lower — 89.40% versus 89.52%
+ for Exp A — and validation accuracy followed the same pattern (87.38% vs 87.98%).
+4. This suggests the Otsu segmentation did not provide a meaningful benefit: removing the skull and background did not help the model focus on more
+discriminative features, and the slightly lower dropout in Exp B may have allowed marginally more overfitting. Write that you are reporting this honestly —
+ a null result is a valid experimental finding.
+
+EfficientNetB0 Exp A vs Exp B:
+
+Exp A (frozen base):
+- Epoch 1: train=79.08%, val=83.33% — already at 83% in epoch 1
+- By epoch 5: val=90.83%
+- Full 25 epochs ran
+
+Exp B (fine-tuned, top 30 layers unfrozen):
+- Epoch 1: train=84.08%, val=89.76% — started even higher
+- ReduceLROnPlateau triggered at epoch 4 (lr dropped from 1e-5 to ~3e-6)
+- Final test accuracy: 93.45% (slightly below Exp A's 93.81%)
+
+What to write (3–4 sentences):
+1. EfficientNetB0 Exp A converged dramatically faster than any custom CNN: by epoch 1 it was already at 83.33% validation accuracy — equivalent to what the
+ baseline CNN achieved only after ~10 epochs. This is because the pretrained ImageNet weights give the network a strong initialisation from the start.
+2. Fine-tuning in Exp B started from Exp A's trained weights (initialisation advantage) and used a very low learning rate (1e-5) to avoid overwriting the
+pretrained representations. ReduceLROnPlateau reduced the rate further to ~3e-6 from epoch 4 onward.
+3. Despite fine-tuning, Exp B's final accuracy (93.45%) was marginally lower than Exp A (93.81%). This suggests that the frozen-base approach already
+extracted sufficiently discriminative features, and partially unfreezing the top layers did not improve generalisation on this dataset.
+4. The training curves for EfficientNetB0 showed much tighter train/val tracking compared to the baseline CNN, indicating better generalisation throughout training.
+
+---
+3e. Challenges Encountered (~500 words)
+
+Challenge 1 — Overfitting
+
+Write a paragraph covering:
+- Evidence: state the specific numbers — at epoch 20, training accuracy was 88.60% versus validation accuracy 83.45%. Also note that val_loss rose from
+0.386 at epoch 16 to 0.493 at epoch 20.
+- What this means: the model stopped learning general features and started memorising training-specific patterns and noise.
+- How you addressed it — list each technique used in improved models:
+  - Dropout(0.4) — each forward pass randomly zeros out 40% of neurons, preventing co-adaptation (cite Srivastava et al., 2014)
+  - BatchNormalization — normalises activations between layers, acts as mild regularisation and stabilises gradients
+  - EarlyStopping — was included as a callback (patience=7) though it did not trigger, it acts as a safety net
+  - Data augmentation — rotation, flipping, zoom, and shift create artificial variety, reducing memorisation of exact training samples
+- Was it resolved? Write honestly: the improved CNN still showed some gap between train and val accuracy, but it was reduced compared to the baseline.
+EfficientNetB0 showed the smallest gap, suggesting pretrained features generalise better.
+
+Challenge 2 — Class Imbalance (investigated, confirmed absent)
+
+Write a paragraph covering:
+- From the class count output (part1): glioma=1400, meningioma=1400, notumor=1400, pituitary=1400 — the dataset is perfectly balanced.
+- When you computed class weights (using sklearn's compute_class_weight), all four weights came out as exactly 1.0, confirming no correction was needed.
+- Write that you computed these weights as a methodological precaution — not assuming the data was balanced, but verifying it. This shows due diligence.
+- Then explain the important distinction: meningioma had the lowest per-class F1 (0.8822 in EfficientNetB0 Exp A) despite having the same number of images as other classes. The difficulty is visual, not quantitative — meningioma's appearance overlaps more with glioma than the other class pairs do with each other.
+
+Challenge 3 — Data Leakage
+
+Write a paragraph covering:
+- Define it in your own words: data leakage occurs when information from the validation or test set influences the training process, making evaluation
+results unrealistically optimistic.
+- Give three concrete ways it could have happened in this project:
+  a. Applying augmentation to validation images — the model would have been trained to classify already-augmented images, inflating reported val accuracy.
+  b. Computing class weights from all 5,600 images instead of just the 3,920 training images — the label distribution of unseen data would have shaped
+training.
+  c. Using global normalisation statistics (mean/std) calculated from the full dataset rather than training data alone.
+- How you prevented it: all three were addressed — augmentation only applied to train_datagen, class weights computed from train_df only, separate
+ImageDataGenerator instances for train vs val/test (val/test used rescale only).
+- Write 1 sentence confirming that zero file overlap was verified between train, val, and test splits (the notebook explicitly printed: "File overlap
+across splits: 0").
+
+---
+3f. Grad-CAM Interpretability Analysis (~300 words)
+
+Insert Figure 15 (4×3 grid, EfficientNetB0 Exp A) and Figure 16 (Baseline CNN vs EfficientNetB0 comparison).
+
+Opening — what Grad-CAM shows (2–3 sentences):
+- Explain in your own words: Grad-CAM works by computing the gradients of the model's output (class score) with respect to the activations in the final
+convolutional layer. These gradients are globally averaged across each filter channel to produce a spatial importance map.
+- Red/yellow areas indicate regions that strongly influenced the prediction. Blue areas had little influence. Cite Selvaraju et al. (2017) here.
+- Write that Grad-CAM was applied to compare EfficientNetB0 Exp A (best model) and Baseline CNN on the same inputs.
+
+For the 4-class grid (look at your actual Figure 15 and write what you observe):
+- For each class, write 1 sentence describing where the model's attention (red/yellow region) appears to be concentrated.
+  - Glioma: does the heatmap overlap with an irregular bright mass? (write what you see)
+  - Meningioma: is activation near the brain periphery/edge? (write what you see)
+  - Pituitary: does attention focus on the central-lower brain region? (write what you see)
+  - No Tumour: is the activation more spread out or diffuse? (write what you see)
+- If any look unexpected or unfocused, say so — that is a valid finding.
+
+For the Baseline CNN vs EfficientNetB0 comparison (Figure 16):
+- Write 2–3 sentences on what you observe. The key question is whether the baseline's heatmap looks scattered or activates on irrelevant areas (skull edge,
+ background), while EfficientNetB0's heatmap is more tightly concentrated on the tumour region.
+- If that pattern holds, write that it suggests EfficientNetB0's ImageNet-pretrained features detect more clinically relevant spatial patterns, whereas the
+ baseline CNN may have learned to rely partly on artefacts or background structure.
+- Cite Selvaraju et al. (2017) again when describing what the heatmap comparison tells you about feature quality.
+
+Limitations of Grad-CAM (1–2 sentences):
+- Write that Grad-CAM shows where the model attended, but not why — it is a post-hoc explanation, not a mechanistic account of the decision rule.
+- Add that it was only applied to a small subset of images here — systematic clinical interpretability would require evaluation across hundreds of cases
+with radiologist verification.
+
+---
+3g. Statistical Significance Testing (~200 words)
+
+Reference: part2d Section 8 (Wilcoxon signed-rank test table).
+
+Opening (1–2 sentences):
+- Accuracy and F1 scores are single-number summaries. The Wilcoxon signed-rank test (Wilcoxon,
+  1945) compares models at the per-sample level — asking whether one model is systematically
+  more correct across all 840 test images — without assuming normality of errors.
+
+Results (2–3 sentences):
+- Write the p-value for Baseline CNN vs CNN Exp A: if p < 0.05, the improvement from
+  regularisation is statistically significant.
+- Write the p-value for EfficientNetB0 Exp A vs ConvNeXtSmall Exp A: if p < 0.05, ConvNeXt
+  is meaningfully better; if p > 0.05, the difference is not statistically significant despite
+  the accuracy gap — write this honestly.
+- Note that adjacent model pairs with very close accuracy (e.g. EfficientNet Exp A vs Exp B)
+  are expected to show p > 0.05 — the models make nearly identical errors.
+
+Interpretation (1 sentence):
+- Write that statistical significance confirms which gains are genuine versus which may be
+  artefacts of test-set variability.
+
+---
+3h. Cost-Sensitive Analysis (~200 words)
+
+Reference: part2d Section 9 (cost matrix, cost per sample bar chart).
+
+Opening (1–2 sentences):
+- Standard accuracy treats a missed meningioma the same as a misidentified pituitary tumour.
+  In clinical triage, these errors differ in consequence: a false negative (tumour missed) can
+  delay life-critical treatment, while a false positive triggers additional imaging — far less
+  severe.
+
+Cost matrix explanation (1–2 sentences):
+- A cost matrix was constructed assigning a penalty of 5 to any prediction of "no tumour"
+  when a tumour was present, 2 to inter-tumour misclassifications, and 1 elsewhere (Section 9).
+- Write the cost-per-sample scores for ANN, Baseline CNN, EfficientNetB0 Exp A, and
+  ConvNeXtSmall Exp A — use actual values from the notebook output.
+
+Class weighting impact (2 sentences):
+- Write that class_weight='balanced' was applied during training, giving equal training
+  signal to all four classes. This was verified to be correct — compute_class_weight returned
+  1.0 for all four classes because the dataset is perfectly balanced.
+- Note that in a genuinely imbalanced scenario, upweighting tumour classes in the cost matrix
+  during training — not just evaluation — would reduce the total weighted cost further.
+
+---
+Key numbers to keep handy while writing:
+
+- Total test set: 840 images (210 per class)
+- ANN accuracy: 60.00%, Macro F1: 0.5538
+- Baseline CNN accuracy: 85.95%, Macro F1: 0.8552
+- CNN Exp A: 89.52%, F1: 0.8957
+- CNN Exp B: 89.40%, F1: 0.8963
+- EfficientNetB0 Exp A: 93.81%, F1: 0.9373
+- EfficientNetB0 Exp B: 93.45%, F1: 0.9337
+- ConvNeXtSmall Exp A: [fill after running]
+- ConvNeXtSmall Exp B: [fill after running]
+- Meningioma F1 in best model: [update after ConvNeXt run]
+- No tumour F1 in best model: [update after ConvNeXt run]
+- Most common error: meningioma classified as glioma (18 times in EfficientNetB0)
