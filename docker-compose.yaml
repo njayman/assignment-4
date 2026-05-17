@@ -1,0 +1,27 @@
+name: assignment-4
+
+services:
+  jupyter:
+    image: rocm/tensorflow:rocm7.2.3-py3.12-tf2.20-dev
+    entrypoint: ["/workspace/docker-entrypoint.sh"]
+    volumes:
+      - .:/workspace
+      - ${HOME}/.cache/kagglehub:/root/.cache/kagglehub
+      - ./content:/content
+    devices:
+      - /dev/kfd:/dev/kfd
+      - /dev/dri/renderD128:/dev/dri/renderD128  # dGPU (RX 9060 XT / gfx1200)
+      - /dev/dri/renderD129:/dev/dri/renderD129  # iGPU (fallback, optional)
+    group_add:
+      - "44"   # video
+      - "992"  # render
+    environment:
+      - HIP_VISIBLE_DEVICES=0          # dGPU only (device 0 = RX 9060 XT)
+      - ROCR_VISIBLE_DEVICES=0
+      - PYTHONPATH=/workspace           # lets notebooks find google/colab stub
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - TF_FORCE_GPU_ALLOW_GROWTH=true
+    ports:
+      - "8888:8888"
+    working_dir: /workspace
+    ipc: host
